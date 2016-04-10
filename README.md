@@ -1,36 +1,29 @@
 # Steam::Categorizer
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/steam/categorizer`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Steam-Categorizer is a cross-platform solution to help you manage your Steam game library. It will fetch community defined tags for every game in your library and assign categories.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Execute:
 
-```ruby
-gem 'steam-categorizer'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install steam-categorizer
+    $ rake install
 
 ## Usage
 
-TODO: Write usage instructions here
+```
+Options:
+  -k, --key=<s>            Steam API Key
+  -i, --id=<s>             Steam ID
+  -c, --config=<s>         Location of existing sharedconfig.vdf
+  -o, --output=<s>         Location to output new sharedconfig.vdf
+  -p, --preferences=<s>    Location of steam_categorizer preferences file
+  -h, --help               Show this message
+```
 
-## Development
+## Disclaimer
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment. Run `bundle exec steam-categorizer` to use the gem in this directory, ignoring other installed copies of this gem.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+I accept no responsibility for any data lost as the result of running this script. I highly recommend you **backup your sharedconfig.vdf** before overwriting it with the output from this script. This project is still in alpha development stages and should be used with great care.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/steam-categorizer.
-
+Bug reports and pull requests are welcome on GitHub at https://github.com/lyle-tafoya/steam-categorizer.
