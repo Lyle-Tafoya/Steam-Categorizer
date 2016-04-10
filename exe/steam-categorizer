@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+
+require "steam/categorizer"
+
+opts = Trollop::options do
+  opt :key, "Steam API Key", :type=>:string, :required=>true
+  opt :id, "Steam ID", :type=>:string, :required=>true
+  opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>true
+  opt :output, "Location to output new sharedconfig.vdf", :type=>:string, :required=>false
+  opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>true
+end
+
+api_key = opts[:key]
+steamid = opts[:id]
+config_location = opts[:config]
+preferences_location = opts[:preferences]
+if output_filepath == nil
+  output_filepath = preferences_location
+else
+  output_filepath = opts[:output]
+end
+
+# Lookup list of games owned by user
+url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=#{api_key}&steamid=#{steamid}&include_appinfo=true&format=json"
+owned_games = HTTParty.get(url)['response']['games']
+
+# Lookup store page for each game
+tag_map = {}
+progressbar = ProgressBar.create(:title => "Looking up user defined tags", :total => owned_games.size)
+all_tags = Set.new
+owned_games.each do |game|
+  progressbar.increment
+  store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/"))
+
+  # Identify all community tags associated with this game
+  store_page.search("script").each do |script_element|
+    next unless script_element.text.include?("InitAppTagModal")
+    steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
+    tag_set = Set.new
+    steam_tags.each do |steam_tag|
+      next unless steam_tag['browseable']
+      tag_set.add(steam_tag['name'])
+      all_tags.add(steam_tag['name'])
+    end
+    tag_map[game['appid']] = tag_set.to_a
+  end
+
+  # TODO Identify categories applied by game owner
+end
+
+# Compile list of accepted categories and assign id values
+all_categories = Set.new
+category_config = JSON.parse(File.read(preferences_location))
+all_tags.to_a.sort.each do |tag_name|
+  next unless category_config.key?(tag_name)
+  category_config[tag_name].each do |category_name|
+    all_categories.add(category_name)
+  end
+end
+category_mapping = {}
+all_categories.to_a.sort.each do |category_name|
+  category_mapping[category_name] = "#{category_mapping.size}"
+end
+
+# Generate the "apps" map for the vdf4r config file
+apps = {}
+tag_map.each do |appid, steam_tags|
+  app_categories = {}
+  steam_tags.each do |tag_name|
+    next unless category_config.key?(tag_name)
+    category_config[tag_name].each do |category_name|
+      app_categories[category_mapping[category_name]] = category_name
+    end
+  end
+  next if app_categories.empty?
+  apps[appid] = { "tags" => app_categories }
+end
+
+# Modify the config file
+vdf4r_parser = VDF4R::Parser.new(File.open(config_location))
+steam_config = vdf4r_parser.parse
+steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'] = apps
+f = File.open(output_filepath, 'w')
+# This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more elegant solution, please send me a pull request
+f.write(JSON.pretty_generate(steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
