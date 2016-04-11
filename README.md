@@ -18,6 +18,9 @@ Options:
   -o, --output=<s>         Location to output new sharedconfig.vdf
   -p, --preferences=<s>    Location of steam_categorizer preferences file
   -h, --help               Show this message
+
+A sample preferences file can be found in sample/category_mapping.json
+If an output file is not specified with --output, the default behavior is to overwrite the location provided with --config
 ```
 
 ## Disclaimer
