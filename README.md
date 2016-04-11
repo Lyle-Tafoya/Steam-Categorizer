@@ -17,13 +17,14 @@ Options:
   -c, --config=<s>         Location of existing sharedconfig.vdf
   -o, --output=<s>         Location to output new sharedconfig.vdf
   -p, --preferences=<s>    Location of steam_categorizer preferences file
+  -b, --birthdate=<i>      Epoch value of birth date in seconds (default: 1460376314)
   -h, --help               Show this message
 
 A sample preferences file can be found in sample/category_mapping.json
 If an output file is not specified with --output, the default behavior is to overwrite the location provided with --config
 
 example:
-steam-categorizer --key "my_steam_api_key" --id "my_steam_id" --config "/home/my_username/.steam/steam/userdata/65357252/7/remote/sharedconfig.vdf" --preferences "/home/my_username/.gem/ruby/2.3.0/gems/steam-categorizer-0.1.0/sample/category_mapping.json" --output "/home/my_username/.steam/steam/userdata/65357252/7/remote/sharedconfig.vdf"
+steam-categorizer --key "my_steam_api_key" --id "my_steam_id" --config "/home/my_username/.steam/steam/userdata/65357252/7/remote/sharedconfig.vdf" --preferences "/home/my_username/.gem/ruby/2.3.0/gems/steam-categorizer-0.1.0/sample/category_mapping.json" --output "/home/my_username/.steam/steam/userdata/65357252/7/remote/sharedconfig.vdf" --birthdate 0
 ```
 
 ## Disclaimer
