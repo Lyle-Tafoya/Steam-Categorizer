@@ -14,7 +14,7 @@ api_key = opts[:key]
 steamid = opts[:id]
 config_location = opts[:config]
 preferences_location = opts[:preferences]
-if output_filepath == nil
+if opts[:output] == nil
   output_filepath = preferences_location
 else
   output_filepath = opts[:output]
@@ -33,19 +33,16 @@ owned_games.each do |game|
   store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/"))
 
   # Identify all community tags associated with this game
-  store_page.search("script").each do |script_element|
+  store_page.search("script").each_with_index do |script_element, i|
     next unless script_element.text.include?("InitAppTagModal")
     steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
     tag_set = Set.new
     steam_tags.each do |steam_tag|
-      next unless steam_tag['browseable']
       tag_set.add(steam_tag['name'])
       all_tags.add(steam_tag['name'])
     end
     tag_map[game['appid']] = tag_set.to_a
   end
-
-  # TODO Identify categories applied by game owner
 end
 
 # Compile list of accepted categories and assign id values
@@ -76,10 +73,22 @@ tag_map.each do |appid, steam_tags|
   apps[appid] = { "tags" => app_categories }
 end
 
-# Modify the config file
+# Open the existing steam config file
 vdf4r_parser = VDF4R::Parser.new(File.open(config_location))
 steam_config = vdf4r_parser.parse
-steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'] = apps
+
+# Delete any existing categories
+steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].each do |app_id, app_map|
+  if app_map.key?("tags")
+    steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].delete('tags')
+    if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].size == 0
+      steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].delete(app_id)
+    end
+  end
+end
+# Merge the newly generated apps map with the old one
+steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].merge!(apps)
+
 f = File.open(output_filepath, 'w')
 # This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more elegant solution, please send me a pull request
 f.write(JSON.pretty_generate(steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
