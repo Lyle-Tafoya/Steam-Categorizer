@@ -15,82 +15,12 @@ if opts[:output] == nil
   opts[:output] = opts[:preferences]
 end
 
-# Lookup list of games owned by user
-url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=#{opts[:key]}&steamid=#{opts[:id]}&include_appinfo=true&format=json"
-owned_games = HTTParty.get(url)['response']['games']
+library = Steam::Categorizer::GameLibrary.new(opts[:key], opts[:id], opts[:birthdate])
+library.populate_tags()
+library.compile_categories(opts[:preferences])
+steam_config = library.generate_steam_config(opts[:config])
 
-# Lookup store page for each game
-tag_map = {}
-progressbar = ProgressBar.create(:title => "Looking up user defined tags", :total => owned_games.size)
-all_tags = Set.new
-owned_games.each do |game|
-  progressbar.increment
-  headers = { 'Cookie'=>"birthtime=#{opts[:birthdate]}; lastagecheckage=#{Time.at(opts[:birthdate]).strftime("%e-%B-%Y")}" }
-  store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers))
-
-  # Identify all community tags associated with this game
-  store_page.search("script").each do |script_element|
-    next unless script_element.text.include?("InitAppTagModal")
-    steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
-    tag_set = Set.new
-    steam_tags.each do |steam_tag|
-      tag_set.add(steam_tag['name'])
-      all_tags.add(steam_tag['name'])
-    end
-    tag_map[game['appid']] = tag_set.to_a unless tag_set.empty?
-  end
-end
-
-# Compile list of accepted categories and assign id values
-all_categories = Set.new
-category_config = JSON.parse(File.read(opts[:preferences]))
-all_tags.to_a.sort.each do |tag_name|
-  next unless category_config.key?(tag_name)
-  category_config[tag_name].each do |category_name|
-    all_categories.add(category_name)
-  end
-end
-category_mapping = {}
-all_categories.to_a.sort.each do |category_name|
-  category_mapping[category_name] = "#{category_mapping.size}"
-end
-
-# Generate the "apps" map for the vdf4r config file
-apps = {}
-tag_map.each do |appid, steam_tags|
-  app_categories = {}
-  steam_tags.each do |tag_name|
-    next unless category_config.key?(tag_name)
-    category_config[tag_name].each do |category_name|
-      app_categories[category_mapping[category_name]] = category_name
-    end
-  end
-  next if app_categories.empty?
-  apps["#{appid}"] = { "tags" => app_categories }
-end
-
-# Open the existing steam config file
-vdf4r_parser = VDF4R::Parser.new(File.open(opts[:config]))
-steam_config = vdf4r_parser.parse
-
-# Delete any existing categories
-steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].each do |appid, app_map|
-  if app_map.key?("tags")
-    steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].delete('tags')
-    if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].empty?
-      steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].delete(appid)
-    end
-  end
-end
-# Merge the newly generated apps map with the old one
-apps.each do |appid, app_map|
-  if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].key?(appid)
-    steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].merge!(apps[appid])
-  else
-    steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid] = apps[appid]
-  end
-end
-
+# Save Steam config to file
 f = File.open(opts[:output], 'w')
 # This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more elegant solution, please send me a pull request
 f.write(JSON.pretty_generate(steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
