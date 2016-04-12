@@ -41,9 +41,12 @@ module Steam
               @all_tags.add(steam_tag['name'])
             end
           end
-          #
-          # TODO Add developer categories to tag_set
-          #
+
+          # Scan developer defined game categories
+          store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
+            tag_set.add(category_node.text)
+            @all_tags.add(category_node.text)
+          end
 
           @tag_map[game['appid']] = tag_set.to_a unless tag_set.empty?
         end

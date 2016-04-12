@@ -6,6 +6,8 @@
   "Beat 'em up": [ "Fighting" ],
   "Board Game": [ "Board Game" ],
   "Bullet Hell": [ "Camera: Side Scroller", "Shooter" ],
+  "Co-op": [ "Online Multiplayer" ],
+  "Cross-Platform Multiplayer": [ "Online Multiplayer" ],
   "Driving": [ "Racing" ],
   "Dungeon Crawler": [ "Role Playing Game" ],
   "Fighting": [ "Fighting" ],
