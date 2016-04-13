@@ -8,7 +8,6 @@ module Steam
     require 'ruby-progressbar'
     require 'vdf4r'
     require 'set'
-    require 'trollop'
 
     class GameLibrary
 
@@ -26,29 +25,38 @@ module Steam
       def populate_tags()
         progressbar = ProgressBar.create(:title => "Looking up user defined tags", :total => @owned_games.size)
         headers = { 'Cookie'=>"birthtime=#{@birthday}; lastagecheckage=#{Time.at(@birthday).strftime("%e-%B-%Y")}" }
-        # TODO Make this multi-threaded
-        @owned_games.each do |game|
-          progressbar.increment
-          store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers))
 
-          # Identify all community tags associated with this game
-          tag_set = Set.new
-          store_page.search("script").each do |script_element|
-            next unless script_element.text.include?("InitAppTagModal")
-            steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
-            steam_tags.each do |steam_tag|
-              tag_set.add(steam_tag['name'])
-              @all_tags.add(steam_tag['name'])
-            end
+        # 16 Threads should be sufficient
+        @owned_games.each_slice(16) do |games|
+          threads = []
+          games.each do |game|
+            threads.push(Thread.new {
+              progressbar.increment
+              store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers))
+
+              # Identify all community tags associated with this game
+              tag_set = Set.new
+              store_page.search("script").each do |script_element|
+                next unless script_element.text.include?("InitAppTagModal")
+                steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
+                steam_tags.each do |steam_tag|
+                  tag_set.add(steam_tag['name'])
+                  @all_tags.add(steam_tag['name'])
+                end
+              end
+
+              # Scan developer defined game categories
+              store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
+                tag_set.add(category_node.text)
+                @all_tags.add(category_node.text)
+              end
+
+              @tag_map[game['appid']] = tag_set.to_a unless tag_set.empty?
+            })
           end
-
-          # Scan developer defined game categories
-          store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
-            tag_set.add(category_node.text)
-            @all_tags.add(category_node.text)
+          threads.each do |thread|
+            thread.join()
           end
-
-          @tag_map[game['appid']] = tag_set.to_a unless tag_set.empty?
         end
       end
 
