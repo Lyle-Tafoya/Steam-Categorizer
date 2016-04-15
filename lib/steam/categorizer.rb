@@ -34,24 +34,34 @@ module Steam
               progressbar.increment
               store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers))
 
-              # Identify all community tags associated with this game
-              tag_set = Set.new
-              store_page.search("script").each do |script_element|
-                next unless script_element.text.include?("InitAppTagModal")
-                steam_tags = JSON.parse(script_element.text[/\[\{\"tagid.*true\}\]/])
-                steam_tags.each do |steam_tag|
-                  tag_set.add(steam_tag['name'])
-                  @all_tags.add(steam_tag['name'])
-                end
-              end
+              discovered_game_tags = Set.new
 
               # Scan developer defined game categories
               store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
-                tag_set.add(category_node.text)
-                @all_tags.add(category_node.text)
+                next if category_node.text().strip() == 'Downloadable Content'
+                discovered_game_tags.add(category_node.text)
               end
 
-              @tag_map[game['appid']] = tag_set.to_a unless tag_set.empty?
+              # Identify all community tags associated with this game
+              tags_script = store_page.search("script").select{ |script_node| script_node.text.include?('InitAppTagModal') }
+              unless tags_script.empty?
+                steam_tags = JSON.parse(tags_script.first.text[/\[\{.*tagid.*\}\]/])
+                steam_tags.each do |steam_tag|
+                  discovered_game_tags.add(steam_tag['name'])
+                end
+              end
+
+              store_page.search("script").each do |script_element|
+                next unless script_element.text.include?("InitAppTagModal")
+                steam_tags = JSON.parse(script_element.text[/\[\{\".*tagid.*\}\]/])
+                steam_tags.each do |steam_tag|
+                  discovered_game_tags.add(steam_tag['name'])
+                end
+              end
+
+              next if discovered_game_tags.empty?
+              @tag_map[game['appid']] = discovered_game_tags.to_a
+              @all_tags.merge(discovered_game_tags)
             })
           end
           threads.each do |thread|
