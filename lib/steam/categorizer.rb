@@ -10,15 +10,14 @@ module Steam
 
     class GameLibrary
 
-      def initialize(api_key, steam_id)
-        # TODO Remove need for API key
-        url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=#{api_key}&steamid=#{steam_id}&include_appinfo=true&format=json"
-        @owned_games = HTTParty.get(url)['response']['games']
+      def initialize(url_name, steam_id)
+        url = "https://steamcommunity.com/id/#{url_name}/games/?tab=all"
+        html = Nokogiri::HTML(HTTParty.get(url))
+        @owned_games = JSON.parse(html.search('script')[12].text[/\[\{"appid.*\}\]/])
         @unmapped_categories = {}
         @category_map = {}
         @configuration = {}
         @apps = {}
-
       end
 
       # Identify publisher defined game categories

@@ -4,7 +4,7 @@ require "steam/categorizer"
 require "trollop"
 
 opts = Trollop::options do
-  opt :key, "Steam API Key", :type=>:string, :required=>true
+  opt :url_name, "Custom URL name set in Profile", :type=>:string, :required=>true
   opt :id, "Steam ID", :type=>:string, :required=>true
   opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>true
   opt :output, "Location to output new sharedconfig.vdf", :type=>:string, :required=>false
@@ -15,7 +15,7 @@ if opts[:output] == nil
   opts[:output] = opts[:preferences]
 end
 
-library = Steam::Categorizer::GameLibrary.new(opts[:key], opts[:id])
+library = Steam::Categorizer::GameLibrary.new(opts[:url_name], opts[:id])
 library.collect_metadata()
 library.map_categories(opts[:preferences])
 steam_config = library.generate_steam_config(opts[:config])
