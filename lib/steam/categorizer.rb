@@ -10,10 +10,11 @@ module Steam
 
     class GameLibrary
 
-      def initialize(url_name, steam_id)
+      def initialize(url_name)
         url = "https://steamcommunity.com/id/#{url_name}/games/?tab=all"
         html = Nokogiri::HTML(HTTParty.get(url))
-        @owned_games = JSON.parse(html.search('script')[12].text[/\[\{"appid.*\}\]/])
+        script = html.search('script').find {|script_node| script_node.text().include?('rgGames')}
+        @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
         @unmapped_categories = {}
         @category_map = {}
         @configuration = {}
