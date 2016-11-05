@@ -115,7 +115,7 @@ module Steam
         apps = {}
         @unmapped_categories.each do |app_id, unmapped_categories|
           app_categories = {}
-          unmapped_categories.each do |category_type,unmapped_category_names|
+          unmapped_categories.each do |category_type, unmapped_category_names|
             unmapped_category_names.each do |unmapped_category_name|
               next unless @configuration[category_type].key?(unmapped_category_name)
               @configuration[category_type][unmapped_category_name].each do |category_name|
