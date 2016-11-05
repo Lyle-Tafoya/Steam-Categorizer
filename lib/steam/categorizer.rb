@@ -5,63 +5,82 @@ module Steam
     require 'httparty'
     require 'nokogiri'
     require 'json'
-    require 'ruby-progressbar'
     require 'vdf4r'
     require 'set'
 
     class GameLibrary
 
-      def initialize(api_key, steam_id, birthday)
+      def initialize(api_key, steam_id)
+        # TODO Remove need for API key
         url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=#{api_key}&steamid=#{steam_id}&include_appinfo=true&format=json"
         @owned_games = HTTParty.get(url)['response']['games']
-        @birthday = birthday
-        @tag_map = {}
-        @all_tags = Set.new
-        @categories = {}
-        @category_config = {}
+        @unmapped_categories = {}
+        @category_map = {}
+        @configuration = {}
+        @apps = {}
+
+      end
+
+      # Identify publisher defined game categories
+      def self.extract_publisher_categories(store_page)
+        extracted_categories = Set.new()
+        store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
+          next if category_node.text().strip() == 'Downloadable Content'
+          extracted_categories.add(category_node.text)
+        end
+
+        return extracted_categories
+      end
+
+      # Identify community defined game tags
+      def self.extract_community_tags(store_page)
+        extracted_tags = Set.new()
+        tags_script = store_page.search("script").select{ |script_node| script_node.text.include?('InitAppTagModal') }
+        unless tags_script.empty?
+          steam_tags = JSON.parse(tags_script.first.text[/\[\{.*tagid.*\}\]/])
+          steam_tags.each do |steam_tag|
+            extracted_tags.add(steam_tag['name'])
+          end
+        end
+        store_page.search("script").each do |script_element|
+          next unless script_element.text.include?("InitAppTagModal")
+          steam_tags = JSON.parse(script_element.text[/\[\{\".*tagid.*\}\]/])
+          steam_tags.each do |steam_tag|
+            extracted_tags.add(steam_tag['name'])
+          end
+        end
+
+        return extracted_tags
       end
 
       # Lookup store page for each game and compile a hash of tags
-      def populate_tags()
-        progressbar = ProgressBar.create(:title => "Looking up user defined tags", :total => @owned_games.size)
-        headers = { 'Cookie'=>"birthtime=#{@birthday}; lastagecheckage=#{Time.at(@birthday).strftime("%e-%B-%Y")}" }
+      def collect_metadata()
+        # Set our age to 25 years old to access store pages for mature rated games
+        birthday = (Time.now() - (60*60*24*365*25)).to_i()
+        headers = { 'Cookie'=>"birthtime=#{birthday}; lastagecheckage=#{Time.at(birthday).strftime("%e-%B-%Y")}" }
 
         # 16 Threads should be sufficient
         @owned_games.each_slice(16) do |games|
           threads = []
           games.each do |game|
             threads.push(Thread.new {
-              progressbar.increment
-              store_page = Nokogiri::HTML(HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers))
+              raw_html = HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers)
+              store_page = Nokogiri::HTML(raw_html)
 
-              discovered_game_tags = Set.new
+              publisher_categories = GameLibrary.extract_publisher_categories(store_page)
+              community_tags = GameLibrary.extract_community_tags(store_page)
 
-              # Scan developer defined game categories
-              store_page.css("div.game_area_details_specs").css("a.name").each do |category_node|
-                next if category_node.text().strip() == 'Downloadable Content'
-                discovered_game_tags.add(category_node.text)
+              app_id = game['appid']
+              next if @unmapped_categories.key?(app_id)
+              @unmapped_categories[app_id] = {}
+              unless publisher_categories.empty?()
+                @unmapped_categories[app_id]['publisherCategories'] = [] unless @unmapped_categories.key?('publisherCategories')
+                @unmapped_categories[app_id]['publisherCategories'] += publisher_categories.to_a()
               end
-
-              # Identify all community tags associated with this game
-              tags_script = store_page.search("script").select{ |script_node| script_node.text.include?('InitAppTagModal') }
-              unless tags_script.empty?
-                steam_tags = JSON.parse(tags_script.first.text[/\[\{.*tagid.*\}\]/])
-                steam_tags.each do |steam_tag|
-                  discovered_game_tags.add(steam_tag['name'])
-                end
+              unless community_tags.empty?()
+                @unmapped_categories[app_id]['communityTags'] = [] unless @unmapped_categories.key?('communityTags')
+                @unmapped_categories[app_id]['communityTags'] += community_tags.to_a()
               end
-
-              store_page.search("script").each do |script_element|
-                next unless script_element.text.include?("InitAppTagModal")
-                steam_tags = JSON.parse(script_element.text[/\[\{\".*tagid.*\}\]/])
-                steam_tags.each do |steam_tag|
-                  discovered_game_tags.add(steam_tag['name'])
-                end
-              end
-
-              next if discovered_game_tags.empty?
-              @tag_map[game['appid']] = discovered_game_tags.to_a
-              @all_tags.merge(discovered_game_tags)
             })
           end
           threads.each do |thread|
@@ -71,33 +90,41 @@ module Steam
       end
 
       # Compile list of category names to be used and assign id values
-      def compile_categories(preferences_file)
-        all_categories = Set.new
-        @category_config = JSON.parse(File.read(preferences_file))
-        @all_tags.to_a.sort.each do |tag_name|
-          next unless @category_config.key?(tag_name)
-          @category_config[tag_name].each do |category_name|
-            all_categories.add(category_name)
+      def map_categories(preferences_file)
+        @configuration = JSON.parse(File.read(preferences_file))
+        mapped_categories = Set.new
+        @unmapped_categories.each do |app_id, unmapped_categories|
+          unmapped_categories.each do |category_type, unmapped_category_names|
+            unmapped_category_names.each do |unmapped_category_name|
+              next unless @configuration[category_type].key?(unmapped_category_name)
+              @configuration[category_type][unmapped_category_name].each do |category_name|
+                mapped_categories.add(category_name)
+              end
+            end
           end
         end
-        all_categories.to_a.sort.each do |category_name|
-          @categories[category_name] = "#{@categories.size}"
+
+        # Assign id value in alphabetical order
+        mapped_categories.to_a.sort.each do |category_name|
+          @category_map[category_name] = "#{@category_map.size}"
         end
       end
 
       # Generate the "apps" map for the vdf config file
       def generate_steam_config(steam_config_filename)
         apps = {}
-        @tag_map.each do |appid, steam_tags|
+        @unmapped_categories.each do |app_id, unmapped_categories|
           app_categories = {}
-          steam_tags.each do |tag_name|
-            next unless @category_config.key?(tag_name)
-            @category_config[tag_name].each do |category_name|
-              app_categories[@categories[category_name]] = category_name
+          unmapped_categories.each do |category_type,unmapped_category_names|
+            unmapped_category_names.each do |unmapped_category_name|
+              next unless @configuration[category_type].key?(unmapped_category_name)
+              @configuration[category_type][unmapped_category_name].each do |category_name|
+                app_categories[@category_map[category_name]] = category_name
+              end
             end
           end
-          next if app_categories.empty?
-          apps["#{appid}"] = { "tags" => app_categories }
+          next if app_categories.empty?()
+          apps["#{app_id}"] = { 'tags'=>app_categories }
         end
 
         # Open the existing steam config file
@@ -105,20 +132,20 @@ module Steam
         steam_config = vdf4r_parser.parse
 
         # Delete any existing categories
-        steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].each do |appid, app_map|
+        steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].each do |app_id, app_map|
           if app_map.key?("tags")
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].delete('tags')
-            if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].empty?
-              steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].delete(appid)
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].delete('tags')
+            if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].empty?
+              steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].delete(app_id)
             end
           end
         end
         # Merge the newly generated apps map with the old one
-        apps.each do |appid, app_map|
-          if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].key?(appid)
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid].merge!(apps[appid])
+        apps.each do |app_id, app_map|
+          if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].key?(app_id)
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].merge!(apps[app_id])
           else
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][appid] = apps[appid]
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id] = apps[app_id]
           end
         end
 

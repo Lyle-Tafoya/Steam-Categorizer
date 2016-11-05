@@ -9,16 +9,15 @@ opts = Trollop::options do
   opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>true
   opt :output, "Location to output new sharedconfig.vdf", :type=>:string, :required=>false
   opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>true
-  opt :birthdate, "Epoch value of birth date in seconds", :type=>:integer, :default=>Time.now.to_i
 end
 
 if opts[:output] == nil
   opts[:output] = opts[:preferences]
 end
 
-library = Steam::Categorizer::GameLibrary.new(opts[:key], opts[:id], opts[:birthdate])
-library.populate_tags()
-library.compile_categories(opts[:preferences])
+library = Steam::Categorizer::GameLibrary.new(opts[:key], opts[:id])
+library.collect_metadata()
+library.map_categories(opts[:preferences])
 steam_config = library.generate_steam_config(opts[:config])
 
 # Save Steam config to file
