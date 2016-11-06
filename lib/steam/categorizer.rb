@@ -10,15 +10,19 @@ module Steam
 
     class GameLibrary
 
-      def initialize(url_name)
-        url = "https://steamcommunity.com/id/#{url_name}/games/?tab=all"
-        html = Nokogiri::HTML(HTTParty.get(url))
-        script = html.search('script').find {|script_node| script_node.text().include?('rgGames')}
-        @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
+      def initialize(url_name:nil, preferences:'~/.config/steam_categorizer.json', shared_config:nil)
         @unmapped_categories = {}
         @category_map = {}
-        @configuration = {}
-        @apps = {}
+        @steam_config = {}
+        
+        @preferences = JSON.parse(File.read(File.expand_path(preferences, __FILE__)))
+        @preferences['sharedConfig'] = shared_config if shared_config
+        @preferences['sharedConfig'] = File.expand_path(@preferences['sharedConfig'])
+        @preferences['urlName'] = url_name if url_name
+
+        html = Nokogiri::HTML(HTTParty.get("https://steamcommunity.com/id/#{@preferences['urlName']}/games/?tab=all"))
+        script = html.search('script').find {|script_node| script_node.text().include?('rgGames')}
+        @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
       end
 
       # Identify publisher defined game categories
@@ -90,14 +94,13 @@ module Steam
       end
 
       # Compile list of category names to be used and assign id values
-      def map_categories(preferences_file)
-        @configuration = JSON.parse(File.read(preferences_file))
+      def map_categories()
         mapped_categories = Set.new
         @unmapped_categories.each do |app_id, unmapped_categories|
           unmapped_categories.each do |category_type, unmapped_category_names|
             unmapped_category_names.each do |unmapped_category_name|
-              next unless @configuration[category_type].key?(unmapped_category_name)
-              @configuration[category_type][unmapped_category_name].each do |category_name|
+              next unless @preferences['categoryMaps'][category_type].key?(unmapped_category_name)
+              @preferences['categoryMaps'][category_type][unmapped_category_name].each do |category_name|
                 mapped_categories.add(category_name)
               end
             end
@@ -111,14 +114,14 @@ module Steam
       end
 
       # Generate the "apps" map for the vdf config file
-      def generate_steam_config(steam_config_filename)
+      def generate_steam_config()
         apps = {}
         @unmapped_categories.each do |app_id, unmapped_categories|
           app_categories = {}
           unmapped_categories.each do |category_type, unmapped_category_names|
             unmapped_category_names.each do |unmapped_category_name|
-              next unless @configuration[category_type].key?(unmapped_category_name)
-              @configuration[category_type][unmapped_category_name].each do |category_name|
+              next unless @preferences['categoryMaps'][category_type].key?(unmapped_category_name)
+              @preferences['categoryMaps'][category_type][unmapped_category_name].each do |category_name|
                 app_categories[@category_map[category_name]] = category_name
               end
             end
@@ -127,8 +130,8 @@ module Steam
           apps["#{app_id}"] = { 'tags'=>app_categories }
         end
 
-        # Open the existing steam config file
-        vdf4r_parser = VDF4R::Parser.new(File.open(steam_config_filename))
+        # Open the existing steam sharedconfig.vdf file
+        vdf4r_parser = VDF4R::Parser.new(File.open(@preferences['sharedConfig']))
         steam_config = vdf4r_parser.parse
 
         # Delete any existing categories
@@ -148,8 +151,16 @@ module Steam
             steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id] = apps[app_id]
           end
         end
+        @steam_config = steam_config
+      end
 
-        return steam_config
+      def export_steam_config()
+        # Save Steam config to file
+        f = File.open(@preferences['sharedConfig'], 'w')
+        
+        # This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more
+        # elegant solution, please send me a pull request
+        f.write(JSON.pretty_generate(@steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
       end
     end
 

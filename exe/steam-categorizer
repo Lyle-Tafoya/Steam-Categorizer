@@ -4,22 +4,15 @@ require "steam/categorizer"
 require "trollop"
 
 opts = Trollop::options do
-  opt :url_name, "Custom URL name set in Profile", :type=>:string, :required=>true
-  opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>true
-  opt :output, "Location to output new sharedconfig.vdf", :type=>:string, :required=>false
-  opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>true
+  opt :url_name, "Custom URL name set in Profile", :type=>:string, :required=>false
+  opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>false
+  opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>false,
+    :default=>"~/.config/steam_categorizer.json"
 end
 
-if opts[:output] == nil
-  opts[:output] = opts[:preferences]
-end
-
-library = Steam::Categorizer::GameLibrary.new(opts[:url_name])
+library = Steam::Categorizer::GameLibrary.new(
+  url_name:opts[:url_name], preferences:opts[:preferences], shared_config:opts[:config])
 library.collect_metadata()
-library.map_categories(opts[:preferences])
-steam_config = library.generate_steam_config(opts[:config])
-
-# Save Steam config to file
-f = File.open(opts[:output], 'w')
-# This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more elegant solution, please send me a pull request
-f.write(JSON.pretty_generate(steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
+library.map_categories()
+steam_config = library.generate_steam_config()
+library.export_steam_config()
