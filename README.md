@@ -4,21 +4,26 @@ Steam-Categorizer is a cross-platform solution to help you manage your Steam gam
 
 ## Installation
 
+```
 Execute:
 
     $ rake install
-
-## Usage
-
 ```
-Options:
-  -u, --url-name=<s>       Custom URL name set in Profile
-  -c, --config=<s>         Location of existing sharedconfig.vdf
-  -p, --preferences=<s>    Location of steam_categorizer preferences file
-  -h, --help               Show this message
+## Usage
+```
+Execute:
 
+    $ steam-categorizer -p steam-categorizer.json
+
+Options:
+    -u, --url-name=<s>       Custom URL name set in Profile
+    -c, --config=<s>         Location of existing sharedconfig.vdf
+    -p, --preferences=<s>    Location of steam_categorizer preferences file
+    -h, --help               Show this message
 ```
 A sample preferences file can be found in example/steam-categorizer.json
+
+If the --preferences parameter is omitted, steam-categorizer will default to ~/.config/steam-categorizer.json
 
 ## Disclaimer
 

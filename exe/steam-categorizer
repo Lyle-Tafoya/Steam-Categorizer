@@ -14,5 +14,5 @@ library = Steam::Categorizer::GameLibrary.new(
   url_name:opts[:url_name], preferences:opts[:preferences], shared_config:opts[:config])
 library.collect_metadata()
 library.map_categories()
-steam_config = library.generate_steam_config()
+library.generate_steam_config()
 library.export_steam_config()
