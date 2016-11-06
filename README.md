@@ -1,6 +1,6 @@
 # Steam::Categorizer
 
-Steam-Categorizer is a cross-platform solution to help you manage your Steam game library. It will fetch community defined tags for every game in your library and assign categories.
+Steam-Categorizer is a cross-platform solution to help you manage your Steam game library. It will fetch community defined tags for every game in your library and assign categories. The primary supported operating system is Linux, but it should also work on Mac OS X and Windows.
 
 ## Installation
 
