@@ -1,11 +1,11 @@
 require "steam/categorizer/version"
+require "steam/vdf"
 
 module Steam
   module Categorizer
     require 'httparty'
     require 'nokogiri'
     require 'json'
-    require 'vdf4r'
     require 'set'
 
     class GameLibrary
@@ -131,36 +131,33 @@ module Steam
         end
 
         # Open the existing steam sharedconfig.vdf file
-        vdf4r_parser = VDF4R::Parser.new(File.open(@preferences['sharedConfig']))
-        steam_config = vdf4r_parser.parse
+        steam_config = VDF.parse(File.read(@preferences['sharedConfig']))
 
         # Delete any existing categories
-        steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].each do |app_id, app_map|
+        steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].each do |app_id, app_map|
           if app_map.key?("tags")
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].delete('tags')
-            if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].empty?
-              steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].delete(app_id)
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].delete('tags')
+            if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].empty?
+              steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].delete(app_id)
             end
           end
         end
         # Merge the newly generated apps map with the old one
         apps.each do |app_id, app_map|
-          if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'].key?(app_id)
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id].merge!(apps[app_id])
+          if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].key?(app_id)
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].merge!(apps[app_id])
           else
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['apps'][app_id] = apps[app_id]
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id] = apps[app_id]
           end
         end
         @steam_config = steam_config
       end
 
+      # Save Steam config to file
       def export_steam_config()
-        # Save Steam config to file
         f = File.open(@preferences['sharedConfig'], 'w')
-        
-        # This is an ugly hack and I know it. I don't know any way to save to file using vdf4r. If you figure out a more
-        # elegant solution, please send me a pull request
-        f.write(JSON.pretty_generate(@steam_config, {:indent=>"\t", :space=>""}).gsub(/^(.*)(\"[^\"]+\"):([\{\[])/, "\\1\\2:\n\\1\\3").split("\n").to_a[1..-2].join("\n").gsub(/^\t/, "").gsub('":"', "\"\t\t\"").gsub(/(:|,)$/, ""))
+        vdf = VDF.generate(@steam_config)
+        f.write(vdf)
       end
     end
 
