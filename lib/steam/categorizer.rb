@@ -61,7 +61,9 @@ module Steam
       def collect_metadata()
         # Set our age to 25 years old to access store pages for mature rated games
         birthday = (Time.now() - (60*60*24*365*25)).to_i()
-        headers = { 'Cookie'=>"birthtime=#{birthday}; lastagecheckage=#{Time.at(birthday).strftime("%e-%B-%Y")}" }
+        headers = {
+          'Cookie'=>"birthtime=#{birthday}; lastagecheckage=#{Time.at(birthday).strftime("%e-%B-%Y")}; mature_content=1"
+        }
 
         # 16 Threads should be sufficient
         @owned_games.each_slice(16) do |games|
