@@ -66,7 +66,7 @@ module Steam
         }
 
         # 16 Threads should be sufficient
-        @owned_games.each_slice(16) do |games|
+        @owned_games.sort_by {|game| game['name']}.each_slice(16) do |games|
           threads = []
           games.each do |game|
             threads.push(Thread.new {
