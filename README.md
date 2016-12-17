@@ -17,7 +17,7 @@ Execute:
 ```
 Execute:
 
-    $ steam-categorizer -p steam-categorizer.json
+    $ steam-categorizer -p steam_categorizer.json
 
 Options:
     -u, --url-name=<s>       Custom URL name set in Profile
@@ -25,9 +25,9 @@ Options:
     -p, --preferences=<s>    Location of steam_categorizer preferences file
     -h, --help               Show this message
 ```
-A sample preferences file can be found in example/steam-categorizer.json
+A sample preferences file can be found in example/steam_categorizer.json
 
-If the --preferences parameter is omitted, steam-categorizer will default to ~/.config/steam-categorizer.json
+If the --preferences parameter is omitted, steam-categorizer will default to ~/.config/steam_categorizer.json
 
 ## Contributing
 
