@@ -41,16 +41,12 @@ module Steam
         extracted_tags = Set.new()
         tags_script = store_page.search("script").select{ |script_node| script_node.text.include?('InitAppTagModal') }
         unless tags_script.empty?
-          steam_tags = JSON.parse(tags_script.first.text[/\[\{.*tagid.*\}\]/])
-          steam_tags.each do |steam_tag|
-            extracted_tags.add(steam_tag['name'])
-          end
-        end
-        store_page.search("script").each do |script_element|
-          next unless script_element.text.include?("InitAppTagModal")
-          steam_tags = JSON.parse(script_element.text[/\[\{\".*tagid.*\}\]/])
-          steam_tags.each do |steam_tag|
-            extracted_tags.add(steam_tag['name'])
+          json_data = tags_script.first.text[/\[\{.*tagid.*\}\]/]
+          unless json_data.nil?
+            steam_tags = JSON.parse(json_data)
+            steam_tags.each do |steam_tag|
+              extracted_tags.add(steam_tag['name'])
+            end
           end
         end
 
