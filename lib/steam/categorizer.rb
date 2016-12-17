@@ -4,6 +4,7 @@ require "steam/vdf"
 module Steam
   module Categorizer
     require 'httparty'
+    require 'logging'
     require 'nokogiri'
     require 'json'
     require 'set'
@@ -11,15 +12,17 @@ module Steam
     class GameLibrary
 
       def initialize(url_name:nil, preferences:'~/.config/steam_categorizer.json', shared_config:nil)
+        @logger = Logging.logger[self]
         @unmapped_categories = {}
         @category_map = {}
         @steam_config = {}
-        
+
         @preferences = JSON.parse(File.read(File.expand_path(preferences, __FILE__)))
         @preferences['sharedConfig'] = shared_config if shared_config
         @preferences['sharedConfig'] = File.expand_path(@preferences['sharedConfig'])
         @preferences['urlName'] = url_name if url_name
 
+        @logger.info "Getting list of games..."
         html = Nokogiri::HTML(HTTParty.get("https://steamcommunity.com/id/#{@preferences['urlName']}/games/?tab=all"))
         script = html.search('script').find {|script_node| script_node.text().include?('rgGames')}
         @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
@@ -55,6 +58,7 @@ module Steam
 
       # Lookup store page for each game and compile a hash of tags
       def collect_metadata()
+        @logger.info "Collecting metadata..."
         # Set our age to 25 years old to access store pages for mature rated games
         birthday = (Time.now() - (60*60*24*365*25)).to_i()
         headers = {
@@ -66,6 +70,7 @@ module Steam
           threads = []
           games.each do |game|
             threads.push(Thread.new {
+              @logger.info "Getting game page for #{game['name']}..."
               raw_html = HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers)
               store_page = Nokogiri::HTML(raw_html)
 
@@ -93,6 +98,7 @@ module Steam
 
       # Compile list of category names to be used and assign id values
       def map_categories()
+        @logger.info "Mapping categories..."
         mapped_categories = Set.new
         @unmapped_categories.each do |app_id, unmapped_categories|
           unmapped_categories.each do |category_type, unmapped_category_names|
@@ -113,6 +119,7 @@ module Steam
 
       # Generate the "apps" map for the vdf config file
       def generate_steam_config()
+        @logger.info "Generating steam config..."
         apps = {}
         @unmapped_categories.each do |app_id, unmapped_categories|
           app_categories = {}
@@ -153,6 +160,7 @@ module Steam
 
       # Save Steam config to file
       def export_steam_config()
+        @logger.info "Exporting steam config..."
         f = File.open(@preferences['sharedConfig'], 'w')
         vdf = VDF.generate(@steam_config)
         f.write(vdf)

@@ -1,7 +1,11 @@
 #!/usr/bin/env ruby
 
+require "logging"
 require "steam/categorizer"
 require "trollop"
+
+Logging.logger.root.level = :debug
+Logging.logger.root.appenders = Logging.appenders.stderr
 
 opts = Trollop::options do
   opt :url_name, "Custom URL name set in Profile", :type=>:string, :required=>false
