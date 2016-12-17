@@ -1,5 +1,6 @@
 {
   "sharedConfig": "~/.steam/steam/userdata/123456789/7/remote/sharedconfig.vdf",
+  "tagPrefix": "Auto: ",
   "urlName": "my_url_name",
   "categoryMaps": {
     "communityTags": {

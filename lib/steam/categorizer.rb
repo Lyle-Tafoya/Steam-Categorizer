@@ -11,15 +11,16 @@ module Steam
 
     class GameLibrary
 
-      def initialize(url_name:nil, preferences:'~/.config/steam_categorizer.json', shared_config:nil)
+      def initialize(url_name:nil, preferences:'~/.config/steam_categorizer.json', shared_config:nil, tag_prefix:nil)
         @logger = Logging.logger[self]
         @unmapped_categories = {}
-        @category_map = {}
         @steam_config = {}
 
         @preferences = JSON.parse(File.read(File.expand_path(preferences, __FILE__)))
         @preferences['sharedConfig'] = shared_config if shared_config
         @preferences['sharedConfig'] = File.expand_path(@preferences['sharedConfig'])
+        @preferences['tagPrefix'] = tag_prefix if tag_prefix
+        @preferences['tagPrefix'] = '' unless @preferences.key?('tagPrefix')
         @preferences['urlName'] = url_name if url_name
 
         @logger.info "Getting list of games..."
@@ -96,51 +97,36 @@ module Steam
         end
       end
 
-      # Compile list of category names to be used and assign id values
-      def map_categories()
-        @logger.info "Mapping categories..."
-        mapped_categories = Set.new
-        @unmapped_categories.each do |app_id, unmapped_categories|
-          unmapped_categories.each do |category_type, unmapped_category_names|
-            unmapped_category_names.each do |unmapped_category_name|
-              next unless @preferences['categoryMaps'][category_type].key?(unmapped_category_name)
-              @preferences['categoryMaps'][category_type][unmapped_category_name].each do |category_name|
-                mapped_categories.add(category_name)
-              end
-            end
-          end
-        end
-
-        # Assign id value in alphabetical order
-        mapped_categories.to_a.sort.each do |category_name|
-          @category_map[category_name] = "#{@category_map.size}"
-        end
-      end
-
       # Generate the "apps" map for the vdf config file
       def generate_steam_config()
         @logger.info "Generating steam config..."
         apps = {}
         @unmapped_categories.each do |app_id, unmapped_categories|
-          app_categories = {}
+          app_categories = Set.new()
           unmapped_categories.each do |category_type, unmapped_category_names|
             unmapped_category_names.each do |unmapped_category_name|
               next unless @preferences['categoryMaps'][category_type].key?(unmapped_category_name)
               @preferences['categoryMaps'][category_type][unmapped_category_name].each do |category_name|
-                app_categories[@category_map[category_name]] = category_name
+                app_categories.add(@preferences['tagPrefix'] + category_name)
               end
             end
           end
           next if app_categories.empty?()
-          apps["#{app_id}"] = { 'tags'=>app_categories }
+          apps["#{app_id}"] = app_categories
         end
 
         # Open the existing steam sharedconfig.vdf file
         steam_config = VDF.parse(File.read(@preferences['sharedConfig']))
 
-        # Delete any existing categories
+        # Delete any existing categories that match our prefix
         steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].each do |app_id, app_map|
           if app_map.key?("tags")
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id]['tags'].each do |tag_id, tag_value|
+              unless tag_value.start_with?(@preferences['tagPrefix'])
+                apps["#{app_id}"] = Set.new() unless apps.key?("#{app_id}")
+                apps["#{app_id}"].add(tag_value)
+              end
+            end
             steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].delete('tags')
             if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].empty?
               steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].delete(app_id)
@@ -148,11 +134,15 @@ module Steam
           end
         end
         # Merge the newly generated apps map with the old one
-        apps.each do |app_id, app_map|
+        apps.each do |app_id, app_categories|
+          app_map = { 'tags'=>{} }
+          app_categories.sort.each_with_index do |item, index|
+            app_map['tags']["#{index}"] = item
+          end
           if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].key?(app_id)
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].merge!(apps[app_id])
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].merge!(app_map)
           else
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id] = apps[app_id]
+            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id] = app_map
           end
         end
         @steam_config = steam_config

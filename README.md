@@ -23,11 +23,14 @@ Options:
     -u, --url-name=<s>       Custom URL name set in Profile
     -c, --config=<s>         Location of existing sharedconfig.vdf
     -p, --preferences=<s>    Location of steam_categorizer preferences file
+    -t, --tag-prefix=<s>     Prefix for automatically categorized tags
     -h, --help               Show this message
 ```
 A sample preferences file can be found in example/steam_categorizer.json
 
 If the --preferences parameter is omitted, steam-categorizer will default to ~/.config/steam_categorizer.json
+
+If a tag prefix is specified, tags not matching it will be preserved
 
 ## Contributing
 
