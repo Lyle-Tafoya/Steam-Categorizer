@@ -71,6 +71,11 @@ module Steam
         end
         return parsed_html
       end
+      
+      def backup_steam_config(filepath)
+        @logger.info "Backup up sharedconfig.vdf"
+        FileUtils.cp(@preferences['sharedConfig'], File.expand_path(filepath))
+      end
 
       # Lookup store page for each game and compile a hash of tags
       def collect_metadata()

@@ -13,10 +13,12 @@ opts = Trollop::options do
   opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>false,
     :default=>"~/.config/steam_categorizer.json"
   opt :tag_prefix, "Prefix for automatically categorized tags", :type=>:string, :required=>false
+  opt :backup, "Name of backup sharedconfig.vdf", :type=>:string, :required=>false
 end
 
 library = Steam::Categorizer::GameLibrary.new(
   url_name:opts[:url_name], preferences:opts[:preferences], shared_config:opts[:config], tag_prefix:opts[:tag_prefix])
+library.backup_steam_config(opts[:backup]) if opts[:backup]
 library.collect_metadata()
 library.generate_steam_config()
 library.export_steam_config()
