@@ -20,13 +20,13 @@ Execute:
     $ steam-categorizer -p steam_categorizer.json
 
 Options:
-    -u, --url-name=<s>       Custom URL name set in Profile
-    -c, --config=<s>         Location of existing sharedconfig.vdf
-    -g, --gui, --no-gui      Whether to use a graphical user interface (default: true)
-    -p, --preferences=<s>    Location of steam_categorizer preferences file
-    -t, --tag-prefix=<s>     Prefix for automatically categorized tags
-    -b, --backup=<s>         Name of backup sharedconfig.vdf
-    -h, --help               Show this message
+  -b, --backup=<s>         Name of backup sharedconfig.vdf
+  -c, --config=<s>         Location of existing sharedconfig.vdf
+  -g, --gui, --no-gui      Whether to use a graphical user interface (default: true)
+  -p, --preferences=<s>    Location of steam_categorizer preferences file (default: ~/.config/steam_categorizer.json)
+  -t, --tag-prefix=<s>     Prefix for automatically categorized tags
+  -u, --url-name=<s>       Custom URL name set in Profile
+  -h, --help               Show this message
 ```
 A sample preferences file can be found in example/steam_categorizer.json
 
