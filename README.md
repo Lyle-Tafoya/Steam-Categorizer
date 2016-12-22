@@ -24,6 +24,7 @@ Options:
     -c, --config=<s>         Location of existing sharedconfig.vdf
     -p, --preferences=<s>    Location of steam_categorizer preferences file
     -t, --tag-prefix=<s>     Prefix for automatically categorized tags
+    -b, --backup=<s>         Name of backup sharedconfig.vdf
     -h, --help               Show this message
 ```
 A sample preferences file can be found in example/steam_categorizer.json
