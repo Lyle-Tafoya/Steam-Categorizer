@@ -2,6 +2,7 @@
 
 require "logging"
 require "steam/categorizer"
+require "steam/window"
 require "trollop"
 
 Logging.logger.root.level = :debug
@@ -19,6 +20,5 @@ end
 library = Steam::Categorizer::GameLibrary.new(
   url_name:opts[:url_name], preferences:opts[:preferences], shared_config:opts[:config], tag_prefix:opts[:tag_prefix])
 library.backup_steam_config(opts[:backup]) if opts[:backup]
-library.collect_metadata()
-library.generate_steam_config()
-library.export_steam_config()
+
+window = Steam::Window.new(library)
