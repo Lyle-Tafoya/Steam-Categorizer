@@ -63,11 +63,19 @@
     "publisherCategories": {
       "Co-op": [ "Multiplayer: Cooperative" ],
       "Cross-Platform Multiplayer": [ "Multiplayer: Cross-Platform", "Multiplayer: Online" ],
+      "HTC Vive": [ "VR", "VR: Vive" ],
       "Local Co-op": [ "Multiplayer: Local", "Multiplayer: Cooperative" ],
+      "Oculus Rift": [ "VR", "VR: Rift" ],
       "Online Co-op": [ "Multiplayer: Online", "Multiplayer: Cooperative" ],
       "Online Multi-Player": [ "Multiplayer: Online" ],
+      "OSVR": [ "VR", "VR: OSVR" ],
+      "Room-Scale": [ "VR", "VR: Room-Scale" ],
+      "Seated": [ "VR", "VR: Seated" ],
       "Shared/Split Screen": [ "Multiplayer: Local" ],
-      "Steam Cloud": [ "Steam Cloud" ]
+      "Standing": [ "VR", "VR: Standing" ],
+      "Steam Cloud": [ "Steam Cloud" ],
+      "Steam Workshop": [ "Steam Workshop" ],
+      "Tracked Motion Controllers": [ "VR", "VR: Tracked Controllers" ]
     }
   }
 }
