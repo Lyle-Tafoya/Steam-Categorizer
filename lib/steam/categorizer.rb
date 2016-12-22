@@ -56,6 +56,21 @@ module Steam
 
         return extracted_tags
       end
+      
+      # TODO This doesn't really belong in this class. Find a better place to put it
+      def self.fetch_url(url:nil, headers:nil, num_retries:2)
+        attempts = 0
+        begin
+          raw_html = HTTParty.get(url, :headers=>headers)
+          parsed_html = Nokogiri::HTML(raw_html)
+        rescue Net::ReadTimeout => error
+          if attempts < num_retries
+            attempts += 1
+            retry
+          end
+        end
+        return parsed_html
+      end
 
       # Lookup store page for each game and compile a hash of tags
       def collect_metadata()
@@ -72,8 +87,7 @@ module Steam
           games.each do |game|
             threads.push(Thread.new {
               @logger.info "Getting game page for #{game['name']}..."
-              raw_html = HTTParty.get("http://store.steampowered.com/app/#{game['appid']}/", :headers=>headers)
-              store_page = Nokogiri::HTML(raw_html)
+              store_page = GameLibrary.fetch_url(url:"http://store.steampowered.com/app/#{game['appid']}/", headers:headers)
 
               publisher_categories = GameLibrary.extract_publisher_categories(store_page)
               community_tags = GameLibrary.extract_community_tags(store_page)
