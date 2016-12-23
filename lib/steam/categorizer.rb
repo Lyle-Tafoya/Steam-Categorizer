@@ -59,21 +59,6 @@ module Steam
         return extracted_tags
       end
       
-      # TODO This doesn't really belong in this class. Find a better place to put it
-      def self.fetch_url(url:nil, headers:nil, num_retries:2)
-        attempts = 0
-        begin
-          raw_html = Excon.get(url, :headers=>headers).body
-          parsed_html = Nokogiri::HTML(raw_html)
-        rescue Net::ReadTimeout => error
-          if attempts < num_retries
-            attempts += 1
-            retry
-          end
-        end
-        return parsed_html
-      end
-      
       def backup_steam_config(filepath)
         @logger.info("Backup up sharedconfig.vdf")
         FileUtils.cp(@preferences['sharedConfig'], File.expand_path(filepath))
@@ -96,7 +81,9 @@ module Steam
             next if @unmapped_categories.key?(app_id)
             threads.push(Thread.new {
               @logger.info("Getting game page for #{game['name']}...")
-              store_page = GameLibrary.fetch_url(url:"http://store.steampowered.com/app/#{app_id}/", headers:headers)
+              connection = Excon.new("http://store.steampowered.com/app/#{app_id}/")
+              raw_html = connection.request(:method=>:get, :idempotent=>true, :retry_limit=>2, :headers=>headers).body
+              store_page = Nokogiri::HTML(raw_html)
 
               # Publisher categories
               publisher_categories = GameLibrary.extract_publisher_categories(store_page)
