@@ -3,7 +3,7 @@ require "steam/vdf"
 
 module Steam
   module Categorizer
-    require 'httparty'
+    require 'excon'
     require 'logging'
     require 'nokogiri'
     require 'json'
@@ -26,7 +26,7 @@ module Steam
         @preferences['urlName'] = url_name if url_name
 
         @logger.info("Getting list of games...")
-        html = Nokogiri::HTML(HTTParty.get("https://steamcommunity.com/id/#{@preferences['urlName']}/games/?tab=all"))
+        html = Nokogiri::HTML(Excon.get("https://steamcommunity.com/id/#{@preferences['urlName']}/games/?tab=all").body)
         script = html.search('script').find {|script_node| script_node.text().include?('rgGames')}
         @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
       end
@@ -63,7 +63,7 @@ module Steam
       def self.fetch_url(url:nil, headers:nil, num_retries:2)
         attempts = 0
         begin
-          raw_html = HTTParty.get(url, :headers=>headers)
+          raw_html = Excon.get(url, :headers=>headers).body
           parsed_html = Nokogiri::HTML(raw_html)
         rescue Net::ReadTimeout => error
           if attempts < num_retries
