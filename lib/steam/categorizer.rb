@@ -134,32 +134,36 @@ module Steam
 
         # Open the existing steam sharedconfig.vdf file
         steam_config = VDF.parse(File.read(@preferences['sharedConfig']))
+        steam = steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']
+        apps_key = steam.keys.find {|key| key.casecmp('apps') == 0}
+        existing_apps = steam[apps_key]
 
         # Delete any existing categories that match our prefix
-        steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].each do |app_id, app_map|
+        existing_apps.each do |app_id, app_map|
           if app_map.key?("tags")
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id]['tags'].each do |tag_id, tag_value|
+            existing_apps[app_id]['tags'].each do |tag_id, tag_value|
               unless tag_value.start_with?(@preferences['tagPrefix'])
-                apps["#{app_id}"] = Set.new() unless apps.key?("#{app_id}")
-                apps["#{app_id}"].add(tag_value)
+                existing_apps["#{app_id}"] = Set.new() unless apps.key?("#{app_id}")
+                existing_apps["#{app_id}"].add(tag_value)
               end
             end
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].delete('tags')
-            if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].empty?
-              steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].delete(app_id)
+            existing_apps[app_id].delete('tags')
+            if existing_apps[app_id].empty?
+              existing_apps.delete(app_id)
             end
           end
         end
+
         # Merge the newly generated apps map with the old one
         apps.each do |app_id, app_categories|
           app_map = { 'tags'=>{} }
           app_categories.sort.each_with_index do |item, index|
             app_map['tags']["#{index}"] = item
           end
-          if steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'].key?(app_id)
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id].merge!(app_map)
+          if existing_apps.key?(app_id)
+            existing_apps[app_id].merge!(app_map)
           else
-            steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']['Apps'][app_id] = app_map
+            existing_apps[app_id] = app_map
           end
         end
         @steam_config = steam_config
