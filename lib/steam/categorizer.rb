@@ -146,8 +146,8 @@ module Steam
             if app['tags'].class == Hash
               app['tags'].each do |tag_id, tag_value|
                 unless tag_value.start_with?(@preferences['tagPrefix'])
-                  app = Set.new() unless apps.key?("#{app_id}")
-                  app.add(tag_value)
+                  apps["#{app_id}"] = Set.new() unless apps.key?("#{app_id}")
+                  apps["#{app_id}"].add(tag_value)
                 end
               end
             end
