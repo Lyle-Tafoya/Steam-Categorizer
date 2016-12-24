@@ -18,7 +18,7 @@ module Steam
         @publisher_categories = {}
         @community_tags = {}
 
-        @preferences = JSON.parse(File.read(File.expand_path(preferences, __FILE__)))
+        @preferences = JSON.parse(File.read(File.expand_path(preferences)))
         @preferences['sharedConfig'] = shared_config if shared_config
         @preferences['sharedConfig'] = File.expand_path(@preferences['sharedConfig'])
         @preferences['tagPrefix'] = tag_prefix if tag_prefix
