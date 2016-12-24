@@ -22,7 +22,7 @@ Execute:
 Options:
   -b, --backup=<s>         Name of backup sharedconfig.vdf
   -c, --config=<s>         Location of existing sharedconfig.vdf
-  -g, --gui, --no-gui      Whether to use a graphical user interface (default: true)
+  -g, --gui, --no-gui      Whether to use a graphical user interface (default: false)
   -p, --preferences=<s>    Location of steam_categorizer preferences file (default: ~/.config/steam_categorizer.json)
   -t, --tag-prefix=<s>     Prefix for automatically categorized tags
   -u, --url-name=<s>       Custom URL name set in Profile
