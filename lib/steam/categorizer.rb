@@ -141,14 +141,18 @@ module Steam
         # Delete any existing categories that match our prefix
         existing_apps.each do |app_id, app_map|
           if app_map.key?("tags")
-            existing_apps[app_id]['tags'].each do |tag_id, tag_value|
-              unless tag_value.start_with?(@preferences['tagPrefix'])
-                existing_apps["#{app_id}"] = Set.new() unless apps.key?("#{app_id}")
-                existing_apps["#{app_id}"].add(tag_value)
+
+            app = existing_apps[app_id]
+            if app['tags'].class == Hash
+              app['tags'].each do |tag_id, tag_value|
+                unless tag_value.start_with?(@preferences['tagPrefix'])
+                  app = Set.new() unless apps.key?("#{app_id}")
+                  app.add(tag_value)
+                end
               end
             end
-            existing_apps[app_id].delete('tags')
-            if existing_apps[app_id].empty?
+            app.delete('tags')
+            if app.empty?
               existing_apps.delete(app_id)
             end
           end
