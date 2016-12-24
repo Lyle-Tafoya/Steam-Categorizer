@@ -11,7 +11,7 @@ Logging.logger.root.appenders = Logging.appenders.stderr
 opts = Trollop::options do
   opt :backup, "Name of backup sharedconfig.vdf", :type=>:string, :required=>false
   opt :config, "Location of existing sharedconfig.vdf", :type=>:string, :required=>false
-  opt :gui, "Whether to use a graphical user interface", :type=>:boolean, :required=>false, :default=>true
+  opt :gui, "Whether to use a graphical user interface", :type=>:boolean, :required=>false, :default=>false
   opt :preferences, "Location of steam_categorizer preferences file", :type=>:string, :required=>false,
     :default=>"~/.config/steam_categorizer.json"
   opt :tag_prefix, "Prefix for automatically categorized tags", :type=>:string, :required=>false
