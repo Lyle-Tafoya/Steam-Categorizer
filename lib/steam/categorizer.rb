@@ -58,7 +58,7 @@ module Steam
 
         return extracted_tags
       end
-      
+
       def backup_steam_config(filepath)
         @logger.info("Backup up sharedconfig.vdf")
         FileUtils.cp(@preferences['sharedConfig'], File.expand_path(filepath))
@@ -134,7 +134,8 @@ module Steam
 
         # Open the existing steam sharedconfig.vdf file
         steam_config = VDF.parse(File.read(@preferences['sharedConfig']))
-        steam = steam_config['UserRoamingConfigStore']['Software']['Valve']['Steam']
+        user_config_store = (steam_config.key?('UserRoamingConfigStore') ? 'UserRoamingConfigStore' : 'UserLocalConfigStore')
+        steam = steam_config[user_config_store]['Software']['Valve']['Steam']
         apps_key = steam.keys.find {|key| key.casecmp('apps') == 0}
         existing_apps = steam[apps_key]
 
