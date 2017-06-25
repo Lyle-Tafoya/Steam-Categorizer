@@ -23,7 +23,7 @@ module Steam
       transformed_json.gsub!(/^\t/, '') # Remove excess indentation
       transformed_json.gsub!(/(\t*)(".+"):{/, "\\1\\2\n\\1{") # Key with map value
       transformed_json.gsub!(/(".+"):(".*"),{,1}/, "\\1\t\t\\2") # Key with string value
-      transformed_json.gsub!(/\},/, /\}/) # Remove trailing commas
+      transformed_json.gsub!(/\},/, '}') # Remove trailing commas
 
       return transformed_json
     end
