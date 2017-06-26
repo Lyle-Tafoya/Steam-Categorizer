@@ -31,7 +31,7 @@ module Steam
         if script
           @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
         else
-          puts('Failed to retrieve user page!')
+          puts('Failed to retrieve user page! Did you set the urlName correctly in the config file?')
           exit
         end
       end
