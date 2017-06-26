@@ -25,10 +25,15 @@ module Steam
         @preferences['tagPrefix'] = '' unless @preferences.key?('tagPrefix')
         @preferences['urlName'] = url_name if url_name
 
-        @logger.info("Getting list of games...")
+        @logger.info('Getting list of games...')
         html = Nokogiri::HTML(Excon.get("https://steamcommunity.com/id/#{@preferences['urlName']}/games/?tab=all").body)
         script = html.search('script').find { |script_node| script_node.text.include?('rgGames') }
-        @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
+        if script
+          @owned_games = JSON.parse(script.text[/\[\{"appid.*\}\]/])
+        else
+          puts('Failed to retrieve user page!')
+          exit
+        end
       end
 
       # Identify publisher defined game categories
