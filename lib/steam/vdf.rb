@@ -7,9 +7,8 @@ module Steam
 
     # Parse a VDF string into a hash
     def self.parse(vdf)
-      transformed_vdf = vdf.gsub(/^\t*{\n\t+"/, '{"') # Map opening
-      transformed_vdf.gsub!(/(".+")\t\t(".*")/, '\1:\2') # Key with string value
-      transformed_vdf.gsub!(/(".+")\n\t*{/, '\1:{') # Key with map value
+      transformed_vdf = vdf.gsub(/^\t*(".+")\t\t(".*")$/, '\1:\2') # Key with string value
+      transformed_vdf.gsub!(/^\t*(".+")\n\t*{$/, '\1:{') # Key with map value
       transformed_vdf.gsub!(/(["}])\n\t*"/, '\1,"') # Key value pair followed by key value pair
       map = JSON.parse("{" + transformed_vdf + "}")
 
@@ -28,8 +27,5 @@ module Steam
       return transformed_json
     end
 
-    def self.pretty_generate(hash)
-      VDF.generate(hash)
-    end
   end
 end
