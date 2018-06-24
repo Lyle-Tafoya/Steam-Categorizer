@@ -86,7 +86,7 @@ module Steam
             next if @unmapped_categories.key?(app_id)
             threads.push(Thread.new {
               @logger.info("Getting game page for #{game['name']}...")
-              connection = Excon.new("http://store.steampowered.com/app/#{app_id}/")
+              connection = Excon.new("https://store.steampowered.com/app/#{app_id}/")
               raw_html = connection.request(method: :get, idempotent: true, retry_limit: 2, headers: headers).body
               store_page = Nokogiri::HTML(raw_html)
 
