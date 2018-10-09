@@ -69,14 +69,20 @@ module Steam
         FileUtils.cp(@preferences['sharedConfig'], File.expand_path(filepath))
       end
 
-      # Lookup store page for each game and compile a hash of tags
-      def collect_metadata
-        @logger.info("Collecting metadata...")
-        # Set our age to 25 years old to access store pages for mature rated games
-        birthday = (Time.now - (60 * 60 * 24 * 365 * 25)).to_i
+      def self.fetch_store_page(app_id)
+        birthday = (Time.now - (60*60*24*365*25)).to_i
         headers = {
           'Cookie' => "birthtime=#{birthday}; lastagecheckage=#{Time.at(birthday).strftime("%e-%B-%Y")}; mature_content=1"
         }
+
+        connection = Excon.new("https://store.steampowered.com/app/#{app_id}/")
+        response = connection.request(method: :get, idempotent: true, retry_limit: 2, headers: headers)
+        return Nokogiri::HTML(response.body)
+      end
+
+      # Lookup store page for each game and compile a hash of tags
+      def collect_metadata
+        @logger.info("Collecting metadata...")
 
         # 16 Threads should be sufficient
         @owned_games.sort_by { |game| game['name'] }.each_slice(16) do |games|
@@ -86,9 +92,7 @@ module Steam
             next if @unmapped_categories.key?(app_id)
             threads.push(Thread.new {
               @logger.info("Getting game page for #{game['name']}...")
-              connection = Excon.new("https://store.steampowered.com/app/#{app_id}/")
-              raw_html = connection.request(method: :get, idempotent: true, retry_limit: 2, headers: headers).body
-              store_page = Nokogiri::HTML(raw_html)
+              store_page = GameLibrary.fetch_store_page(app_id)
 
               # Publisher categories
               publisher_categories = GameLibrary.extract_publisher_categories(store_page)
